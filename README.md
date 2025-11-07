@@ -1,241 +1,44 @@
-# SmashFi Coin List
+﻿# SmashFi Coin List
 
-암호화폐 목록을 조회하고 즐겨찾기를 관리할 수 있는 웹 애플리케이션입니다.
+Next.js 16과 React 19로 구현한 암호화폐 시세판 과제 프로젝트입니다. CoinGecko 공개 API를 활용해 데이터를 가져오고, 즐겨찾기·검색·정렬·토스트·가상 스크롤 등 요구된 기능을 모두 담았습니다.
 
-## 🛠 사용한 기술 스택
+## 사용 기술 스택
+- **Framework**: Next.js 16 (App Router) + React 19 + TypeScript
+- **스타일링**: Tailwind CSS, 커스텀 CSS 변수, 글래스모픽 테마
+- **데이터/상태**: TanStack React Query, localStorage 연동 `useFavorites`
+- **대용량 리스트**: `react-virtuoso` 기반 가상 스크롤
+- **기타 도구**: lucide-react, tailwindcss-animate, ESLint, TypeScript
 
-### Core
-- **Next.js 16** - React 프레임워크 (App Router)
-- **React 19** - UI 라이브러리
-- **TypeScript** - 타입 안정성
+## 실행 방법
+1. 의존성 설치: `npm install`
+2. 개발 서버 실행: `npm run dev`
+3. 브라우저에서 `http://localhost:3000` 접속 → 루트(`/`)가 자동으로 `/coin-list`로 리다이렉트됩니다.
 
-### UI/UX
-- **Tailwind CSS 4** - 유틸리티 기반 CSS 프레임워크
-- **shadcn/ui** - 재사용 가능한 컴포넌트 라이브러리
-- **Lucide React** - 아이콘 라이브러리
+> 별도의 환경 변수는 필요 없습니다. CoinGecko 공개 API를 그대로 호출합니다.
 
-### State & Data
-- **TanStack Query (React Query)** - 서버 상태 관리 및 캐싱
-- **Local Storage** - 즐겨찾기 데이터 영구 저장
+## 요구사항 체크리스트
+- [x] **라우팅**: `/` → `/coin-list` 리다이렉트 (`src/app/page.tsx`)
+- [x] **데이터 소스**: `/api/coins`가 CoinGecko `coins/markets` 호출, 실패 시 `src/lib/mocks/coins.ts` 폴백
+- [x] **초기 정렬**: Price 내림차순
+- [x] **탭**: All / My favorite + 즐겨찾기 상태(localStorage) 유지
+- [x] **검색 인풋**: 심볼·이름을 대소문자 구분 없이 필터링
+- [x] **표시 필드**: 심볼, 이름, Price, 24h Change, 24h Volume, Market Cap
+- [x] **정렬 토글**: Price·24h Change·24h Volume·Market Cap 헤더 클릭 시 오름/내림차순 전환
+- [x] **즐겨찾기 + 토스트**: `Successfully added! / Successfully deleted!` 토스트, 새로고침 후에도 상태 유지
+- [x] **대용량 최적화**: `react-virtuoso`로 가상 스크롤 처리해 10,000+ 행도 부드럽게 스크롤
 
-### Performance Optimization
-- **react-virtuoso** - 가상 스크롤링 (대용량 데이터 최적화)
+## 구현 핵심
+- **Route Handler + ISR**: `revalidate: 5`로 서버 캐시를 5초마다 갱신하고 React Query `refetchInterval: 5000`과 맞춰 거의 실시간으로 반영
+- **React Query 상태 관리**: `staleTime`/`refetchInterval` 설정으로 불필요한 리렌더를 줄이고 로딩/에러 상태를 일관되게 표시
+- **`useFavorites` 훅**: Set + localStorage 동기화로 즐겨찾기 토글, 탭 필터, 토스트 메시지를 하나의 진실 소스로 유지
+- **디자인 구현**: 글래스모픽 배경, 정렬 도트 인디케이터, 상단 토스트, 검색 입력/탭 등 시안을 그대로 반영
+- **가상 스크롤**: Virtuoso가 화면에 필요한 행만 렌더링해 대용량 데이터에서도 성능 유지
 
-### API
-- **CoinGecko API** - 실시간 암호화폐 데이터
+## 보완하고 싶은 점
+1. **실시간 스트리밍**: 5초 폴링 대신 거래소 WebSocket/SSE를 붙여 틱 단위 갱신을 지원하고 싶습니다.
+2. **자동화 테스트**: Jest + React Testing Library, Playwright 기반 테스트를 추가해 회귀를 방지할 예정입니다.
+3. **접근성·국제화**: 스크린리더 라벨 점검과 통화/숫자 로케일 옵션을 제공하고 싶습니다.
+4. **모니터링**: Sentry 등 에러 수집 도구를 붙여 API 실패를 추적하면 운영 안정성이 올라갑니다.
 
-## 🚀 프로젝트 실행 방법
-
-### 1. 의존성 설치
-```bash
-npm install
-```
-
-### 2. 개발 서버 실행
-```bash
-npm run dev
-```
-
-### 3. 브라우저에서 확인
-[http://localhost:3000](http://localhost:3000) 접속
-
-### 4. 프로덕션 빌드
-```bash
-npm run build
-npm start
-```
-
-## 📋 구현한 주요 요소
-
-### ✅ 필수 구현 사항
-
-#### 1. **API 연동**
-- CoinGecko API를 사용한 실시간 데이터 페칭
-- Next.js API Route를 통한 프록시 구현 (`/api/coins/route.ts`)
-- API 실패 시 Mock 데이터 Fallback 처리
-- React Query를 통한 자동 리페칭 (60초마다)
-
-#### 2. **페이지 라우팅**
-- 루트 경로(`/`) → `/coin-list` 자동 리다이렉트
-- Next.js App Router 활용
-
-#### 3. **초기 정렬**
-- Price 기준 내림차순 정렬로 시작
-
-#### 4. **탭 시스템**
-- **All**: 전체 코인 목록
-- **My favorite**: 즐겨찾기한 코인만 필터링
-- 탭 전환 시 실시간 리스트 업데이트
-
-#### 5. **검색 기능**
-- 코인 심볼(BTC) 또는 이름(Bitcoin) 검색
-- 대소문자 구분 없는 검색
-- 실시간 필터링
-
-#### 6. **리스트 구현**
-각 코인은 다음 정보를 포함:
-- 심볼 (Symbol)
-- 이름 (Name)
-- 코인 이미지
-- 현재 가격 (Price)
-- 24시간 변동률 (24h Change) - 색상으로 구분
-- 24시간 거래량 (24h Volume)
-- 시가총액 (Market Cap)
-
-#### 7. **즐겨찾기 기능**
-- 별 아이콘 클릭으로 추가/제거
-- LocalStorage에 저장하여 새로고침 후에도 유지
-- 토스트 메시지 표시:
-  - 추가: "Successfully added!"
-  - 제거: "Successfully deleted!"
-
-#### 8. **정렬 기능**
-- 정렬 가능한 헤더: Price, 24h Change, 24h Volume, Market Cap
-- 클릭 시 오름차순/내림차순 토글
-- 시각적 정렬 방향 인디케이터
-
-### ✅ 선택 구현 사항
-
-#### 1. **대용량 데이터 최적화**
-- **react-virtuoso**를 사용한 가상 스크롤링 구현
-- 10,000개 이상의 데이터도 부드럽게 렌더링
-- DOM 노드를 최소화하여 메모리 사용량 감소
-- 뷰포트에 보이는 항목만 렌더링
-- 자동 높이 조정 및 동적 스크롤링 최적화
-
-**최적화 전략:**
-- **가상 스크롤링**: 화면에 보이는 항목만 렌더링
-- **useMemo 훅**: 필터링/정렬된 데이터 메모이제이션
-- **React Query 캐싱**: 불필요한 API 호출 방지 (60초 staleTime)
-
-#### 2. **반응형 디자인**
-- 모바일 전용 레이아웃 구현
-- 데스크톱 전용 레이아웃 구현
-- Tailwind CSS 브레이크포인트 활용 (md:)
-- 모바일: 컴팩트한 2열 레이아웃 (별/아이콘/정보 | 가격/변동률)
-- 데스크톱: 전체 정보를 표시하는 5열 테이블 레이아웃
-- 모바일 최적화된 텍스트 크기 및 간격
-
-#### 3. **다크 테마**
-- CSS 변수를 활용한 다크 테마 구현
-- 일관된 색상 시스템 적용
-- 커스텀 색상 팔레트:
-  - 배경: `#0B0F14`, `#0F172A`
-  - 텍스트: `#E5E7EB`, `#9CA3AF`
-  - 상태: 성공(`#22C55E`), 위험(`#EF4444`), 정보(`#3B82F6`)
-  - 별 아이콘: 활성(`#FACC15`), 비활성(`#9CA3AF`)
-
-## 🎨 주요 기술적 결정
-
-### 1. **상태 관리 구조**
-- **서버 상태**: React Query로 관리 (API 데이터)
-- **클라이언트 상태**: React Hooks로 관리 (검색어, 정렬, 탭)
-- **영구 상태**: LocalStorage로 관리 (즐겨찾기)
-
-### 2. **컴포넌트 구조**
-```
-src/
-├── app/
-│   ├── api/coins/route.ts      # API 프록시
-│   ├── coin-list/page.tsx      # 코인 리스트 페이지
-│   ├── layout.tsx              # 루트 레이아웃
-│   ├── page.tsx                # 홈 (리다이렉트)
-│   └── providers.tsx           # React Query Provider
-├── components/
-│   ├── CoinList.tsx            # 메인 코인 리스트 컴포넌트
-│   └── Toast.tsx               # 토스트 알림
-├── hooks/
-│   ├── useCoins.ts             # 코인 데이터 페칭
-│   └── useFavorites.ts         # 즐겨찾기 관리
-└── lib/
-    ├── types.ts                # TypeScript 타입 정의
-    └── utils.ts                # 유틸리티 함수
-```
-
-### 3. **성능 최적화**
-- 가상 스크롤링으로 대용량 데이터 처리
-- React Query의 staleTime으로 불필요한 재요청 방지
-- useMemo를 통한 연산 최적화
-
-### 4. **디자인 시스템**
-- shadcn/ui 컴포넌트 라이브러리 도입
-- Lucide React 아이콘 사용
-- 일관된 컴포넌트 스타일링
-- CSS 변수 기반 테마 시스템
-
-## 🎯 주요 기능
-
-### 코인 목록 표시
-- CoinGecko API에서 250개 코인 데이터 실시간 페칭
-- 가상 스크롤링으로 부드러운 리스트 렌더링
-- 모바일/데스크톱 반응형 레이아웃
-
-### 검색 및 필터링
-- 실시간 검색 (코인 이름 또는 심볼)
-- 탭 기반 필터링 (All / My favorite)
-- 검색 결과 즉시 반영
-
-### 정렬 기능
-- 4가지 정렬 기준: Price, 24h Change, 24h Volume, Market Cap
-- 오름차순/내림차순 토글
-- 시각적 정렬 표시 (파란색 인디케이터)
-
-### 즐겨찾기
-- 별 아이콘 클릭으로 즐겨찾기 추가/제거
-- localStorage 기반 영구 저장
-- 즐겨찾기 상태 토스트 알림
-
-## 🤖 AI 활용 내역
-
-- **사용 도구**: Claude Code (Anthropic)
-- **활용 내용**:
-  - 프로젝트 초기 구조 설계 및 파일 생성
-  - TypeScript 타입 정의 및 유틸리티 함수 작성
-  - React 컴포넌트 구현 및 최적화
-  - Next.js API Route 구현
-  - TanStack Query 설정 및 캐싱 전략
-  - react-virtuoso 가상 스크롤링 구현
-  - shadcn/ui 통합 및 커스터마이징
-  - 반응형 레이아웃 구현 (모바일/데스크톱)
-  - 다크 테마 색상 시스템 구현
-
-## 💡 보완하고 싶은 점
-
-### 1. **테스트 코드 작성**
-- Jest, React Testing Library를 활용한 단위/통합 테스트
-- E2E 테스트 (Playwright/Cypress)
-- 컴포넌트 스냅샷 테스트
-
-### 2. **에러 핸들링 개선**
-- API 에러에 대한 더 구체적인 UI 피드백
-- 재시도 로직 추가 (React Query retry)
-- 네트워크 상태 감지 및 오프라인 모드
-
-### 3. **접근성 (a11y) 개선**
-- 키보드 네비게이션 강화
-- 스크린 리더 지원 개선
-- ARIA 레이블 보강
-- 포커스 관리 개선
-
-### 4. **추가 기능**
-- 다국어 지원 (i18n)
-- 코인 상세 페이지
-- 가격 알림 기능
-- 차트 뷰 추가
-- 페이지네이션 옵션
-
-### 5. **성능 최적화**
-- 검색 입력 debounce 적용
-- 이미지 최적화 (Next.js Image 컴포넌트)
-- 코드 스플리팅 개선
-- Service Worker를 통한 오프라인 지원
-
-### 6. **UX 개선**
-- 검색어 하이라이트 기능
-- 로딩 스켈레톤 UI
-- 애니메이션 효과 추가
-- 더 나은 에러 상태 표시
-
-## 📝 라이선스
-
-ISC
+## AI 활용 내역
+- OpenAI ChatGPT (Codex CLI)를 통해 레이아웃 아이디어와 리팩터링 방향을 브레인스토밍하고 README 카피를 다듬었습니다. 모든 코드는 직접 검토 후 반영했습니다.

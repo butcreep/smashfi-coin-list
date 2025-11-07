@@ -15,7 +15,7 @@ export function useCoins() {
   return useQuery({
     queryKey: ['coins'],
     queryFn: fetchCoins,
-    staleTime: 60000, // 1 minute
-    refetchInterval: 60000, // Refetch every minute
+    staleTime: 5000, // Cache for 5 seconds
+    refetchInterval: 5000, // Poll every 5 seconds
   })
 }

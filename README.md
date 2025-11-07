@@ -1,0 +1,1 @@
+# smashfi-coin-list

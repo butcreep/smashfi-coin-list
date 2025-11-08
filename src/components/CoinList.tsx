@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Virtuoso } from 'react-virtuoso';
-import { Info, Star } from 'lucide-react';
+import { ChevronUp, Star } from 'lucide-react';
 import { useCoins } from '@/hooks/useCoins';
 import { useFavorites } from '@/hooks/useFavorites';
 import { SortField, SortOrder, TabType } from '@/lib/types';
@@ -39,7 +39,29 @@ export default function CoinList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('current_price');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
+  const [listHeight, setListHeight] = useState<number>(0);
+  const isListReady = !isLoading && isLoaded;
+
+  useEffect(() => {
+    if (!isListReady) return;
+
+    const handleResize = () => {
+      if (!listContainerRef.current) return;
+      const rect = listContainerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const height = viewportHeight - rect.top - 50 - 40;
+      setListHeight(Math.max(320, height));
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isListReady]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -53,7 +75,10 @@ export default function CoinList() {
 
   const handleFavoriteToggle = (coinId: string) => {
     const isAdding = toggleFavorite(coinId);
-    setToast(isAdding ? 'Successfully added!' : 'Successfully deleted!');
+    setToast({
+      message: isAdding ? 'Successfully added!' : 'Successfully deleted!',
+      type: isAdding ? 'success' : 'error',
+    });
   };
 
   const processedCoins = useMemo(() => {
@@ -73,11 +98,9 @@ export default function CoinList() {
   const HeaderCell = ({
     label,
     field,
-    withInfo = false,
   }: {
     label: string;
     field: SortField;
-    withInfo?: boolean;
   }) => {
     const isActive = sortField === field;
 
@@ -87,31 +110,16 @@ export default function CoinList() {
         onClick={() => handleSort(field)}
         aria-pressed={isActive}
         className="group inline-flex w-full items-center justify-end gap-2 text-[11px] font-semibold uppercase tracking-[0.35em]"
-        style={{ color: 'var(--text-muted)' }}
+        style={{ color: 'var(--text-muted)', cursor: 'pointer' }}
       >
         <span className="text-left">{label}</span>
-        {withInfo && (
-          <Info
-            size={14}
-            className="transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-          />
-        )}
-        <span
-          className="relative inline-flex h-2 w-2 items-center justify-center"
-          aria-hidden
-        >
-          <span
-            className="h-2 w-2 rounded-full border transition-all duration-200"
-            style={{
-              borderColor: isActive
-                ? 'rgba(96,165,250,0)'
-                : 'rgba(148,163,184,0.5)',
-              background: isActive ? 'var(--info)' : 'transparent',
-              boxShadow: isActive ? '0 0 12px rgba(96,165,250,0.75)' : 'none',
-            }}
-          />
-        </span>
+        <ChevronUp
+          size={14}
+          className={`transition-all duration-200 ${
+            isActive ? 'opacity-100' : 'opacity-40'
+          } ${isActive && sortOrder === 'desc' ? 'rotate-180' : ''}`}
+          style={{ color: 'var(--text-muted)' }}
+        />
       </button>
     );
   };
@@ -142,7 +150,11 @@ export default function CoinList() {
               aria-label={
                 favorite ? 'Remove from favorites' : 'Add to favorites'
               }
-              className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/5 text-left transition-all hover:border-white/40"
+              className="p-1 text-left transition-colors"
+              style={{
+                color: favorite ? 'var(--star-active)' : 'var(--star-inactive)',
+                cursor: 'pointer',
+              }}
             >
               <Star
                 className="h-4 w-4 transition-all"
@@ -164,8 +176,8 @@ export default function CoinList() {
                 {coin.symbol}
               </p>
               <p
-                className="truncate text-xs"
-                style={{ color: 'var(--text-muted)' }}
+                className="truncate"
+                style={{ fontSize: '11px', color: 'var(--text-muted)' }}
               >
                 {coin.name}
               </p>
@@ -183,8 +195,8 @@ export default function CoinList() {
               {pretty}
             </div>
             <div
-              className="text-xs"
               style={{
+                fontSize: '11px',
                 color: 'var(--text-muted)',
                 fontVariantNumeric: 'tabular-nums',
               }}
@@ -230,7 +242,7 @@ export default function CoinList() {
         style={{ background: 'var(--bg)' }}
       >
         <div
-          className="rounded-2xl border px-6 py-4 text-sm font-medium"
+          className="x-6 py-4 text-sm font-medium"
           style={{
             borderColor: 'rgba(148,163,184,0.2)',
             background: 'rgba(5,11,24,0.9)',
@@ -251,7 +263,7 @@ export default function CoinList() {
         style={{ background: 'var(--bg)' }}
       >
         <div
-          className="rounded-2xl border px-6 py-4 text-sm font-medium"
+          className="px-6 py-4 text-sm font-medium"
           style={{
             borderColor: 'rgba(248,113,113,0.4)',
             background: 'rgba(51,11,16,0.85)',
@@ -265,9 +277,15 @@ export default function CoinList() {
     );
   }
 
+  const virtuosoHeight =
+    listHeight > 0 ? `${listHeight}px` : 'min(640px, 65vh)';
+
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      <div className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-8 px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+    <div
+      className="flex flex-col"
+      style={{ background: 'var(--bg)', minHeight: 'calc(100vh - 100px)' }}
+    >
+      <div className="relative mx-auto flex min-h-0 w-full flex-1 flex-col gap-8 px-4 pb-16 pt-8 sm:px-6 lg:px-8">
         <div className="space-y-4">
           <div className="flex flex-col gap-2">
             <h1
@@ -279,37 +297,31 @@ export default function CoinList() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 rounded-[28px] border border-white/10 bg-white/5 px-4 py-4">
-          <div className="inline-flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 p-1">
-              {TABS.map(({ key, label }) => {
-                const isActiveTab = activeTab === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setActiveTab(key)}
-                    className="rounded-full px-5 py-2 text-sm font-semibold transition-all"
-                    style={{
-                      background: isActiveTab
-                        ? 'linear-gradient(135deg,#1f2a44,#10192b)'
-                        : 'transparent',
-                      color: isActiveTab ? '#fff' : 'var(--text-muted)',
-                      boxShadow: isActiveTab
-                        ? '0 12px 30px rgba(0,0,0,0.35)'
-                        : 'none',
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+        <div className="flex flex-col gap-4 px-4 py-4">
+          <div className="inline-flex items-center gap-2">
+            {TABS.map(({ key, label }) => {
+              const isActiveTab = activeTab === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveTab(key)}
+                  className="text-sm font-semibold transition-all"
+                  style={{
+                    paddingRight: '5px',
+                    color: isActiveTab ? '#fff' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="w-full flex-1 min-w-[240px] max-w-[520px] md:ml-auto md:w-auto">
-            <div className="relative h-[46px] w-full">
-              <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
+          <div className="flex-1 max-w-2xl">
+            <div className="relative h-[46px] w-full flex items-center">
+              <div className="pointer-events-none absolute left-4 flex items-center">
                 <svg
                   className="h-[18px] w-[18px]"
                   style={{ color: 'var(--text-muted)' }}
@@ -331,8 +343,10 @@ export default function CoinList() {
                 onChange={(event) => setSearchTerm(event.target.value)}
                 aria-label="Search coins"
                 placeholder="Search something...(BTC, Bitcoin, B...)"
-                className="h-full w-full rounded-full border bg-transparent pl-12 pr-4 text-sm font-medium focus:outline-none"
+                className="h-full w-full text-sm font-medium focus:outline-none rounded-md border"
                 style={{
+                  paddingLeft: '3rem',
+                  paddingRight: '1rem',
                   borderColor: 'rgba(148,163,184,0.2)',
                   background:
                     'linear-gradient(135deg, rgba(15,23,42,0.85), rgba(2,6,23,0.85))',
@@ -347,48 +361,47 @@ export default function CoinList() {
         </div>
 
         <div
-          className="overflow-x-auto rounded-[32px] border"
-          style={{
-            borderColor: 'rgba(148,163,184,0.15)',
-            background:
-              'linear-gradient(145deg, rgba(15,23,42,0.9), rgba(2,6,23,0.96))',
-            boxShadow: 'var(--shadow-strong)',
-          }}
-        >
-          <div className="min-w-[960px]">
+          className="flex-1 overflow-x-auto">
+          <div className="flex h-full min-h-0 min-w-[960px] flex-col">
             <div
-              className={`${COLUMN_TEMPLATE} px-6 pt-6 text-[11px] font-semibold uppercase tracking-[0.35em]`}
-              style={{ color: 'var(--text-muted)' }}
+              className={`${COLUMN_TEMPLATE} px-6 text-[11px] font-semibold uppercase tracking-[0.35em]`}
+              style={{
+                color: 'var(--text-muted)',
+                paddingTop: '10px',
+                paddingBottom: '10px',
+              }}
             >
               <div className="text-left">Name</div>
-              <HeaderCell label="Price" field="current_price" withInfo />
+              <HeaderCell label="Price" field="current_price" />
               <HeaderCell
                 label="24h Change"
                 field="price_change_percentage_24h"
-                withInfo
               />
-              <HeaderCell label="24h Volume" field="total_volume" withInfo />
+              <HeaderCell label="24h Volume" field="total_volume" />
               <HeaderCell label="Market Cap" field="market_cap" />
             </div>
 
-            <div className="px-3 pb-4">
+            <div className="flex min-h-0 flex-1 flex-col px-3 pb-4">
               <div
-                className="mt-4 rounded-[24px]"
+                ref={listContainerRef}
+                className="mt-4 flex min-h-0 flex-1 overflow-hidden"
                 style={{
-                  border: '1px solid rgba(148,163,184,0.12)',
                   background: 'rgba(4,7,16,0.35)',
+                  height: virtuosoHeight,
                 }}
               >
                 {processedCoins.length === 0 ? (
                   <div
-                    className="flex h-[320px] items-center justify-center text-sm font-medium"
+                    className="flex flex-1 items-center justify-center text-sm font-medium"
                     style={{ color: 'var(--text-muted)' }}
                   >
                     No coins found
                   </div>
                 ) : (
                   <Virtuoso
-                    style={{ height: 'calc(100vh - 360px)' }}
+                    key={`${activeTab}-${processedCoins.length}`}
+                    className="flex-1"
+                    style={{ height: virtuosoHeight, minHeight: 0 }}
                     totalCount={processedCoins.length}
                     itemContent={renderRow}
                   />
@@ -399,7 +412,13 @@ export default function CoinList() {
         </div>
       </div>
 
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

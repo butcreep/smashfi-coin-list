@@ -5,28 +5,23 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* surfaces */
   --bg: #010409;
   --surface: #050b18;
   --card: #0b1427;
   --input: #0a1224;
   --border: rgba(148, 163, 184, 0.18);
 
-  /* text */
   --text: #f8fafc;
   --text-muted: #94a3b8;
   --placeholder: #64748b;
 
-  /* states */
   --success: #4ade80;
   --danger: #fb7185;
   --info: #60a5fa;
 
-  /* ui bits */
   --star-active: #fbbf24;
   --star-inactive: rgba(148, 163, 184, 0.7);
 
-  /* toast */
   --toast-bg: rgba(4, 7, 16, 0.85);
   --toast-fg: #f8fafc;
   --toast-accent: #34d399;
@@ -206,13 +201,11 @@ input::placeholder {
     @apply bg-background text-foreground;
   }
 }
-/* Firefox */
 * {
-  scrollbar-width: thin; /* auto | thin | none */
+  scrollbar-width: thin;
   scrollbar-color: var(--scroll-thumb) var(--scroll-track);
 }
 
-/* WebKit (Chrome/Safari/Edge) */
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
